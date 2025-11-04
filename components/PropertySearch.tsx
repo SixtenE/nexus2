@@ -4,13 +4,16 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { run } from "@/app/temporal/client";
 
 const PropertySearch = () => {
   const [address, setAddress] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (address.trim()) {
+      const response = await run(address);
+      console.log(response);
     }
   };
 
