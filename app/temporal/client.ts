@@ -1,13 +1,15 @@
 "use server";
 
 import { Connection, Client } from "@temporalio/client";
-import type { example } from "./workflows";
+import type { example, mockActivity } from "./workflows";
 import { nanoid } from "nanoid";
 
 export async function run(args: string) {
   // Connect to the default Server location
   const connection = await Connection.connect({
-    address: "localhost:7233",
+    address: process.env.TEMPORAL_ADDRESS,
+    apiKey: process.env.TEMPORAL_API_KEY,
+    tls: true,
   });
   // In production, pass options to configure TLS and other settings:
   // {
@@ -21,13 +23,16 @@ export async function run(args: string) {
     // namespace: 'foo.bar', // connects to 'default' namespace if not specified
   });
 
-  const handle = await client.workflow.start<typeof example>("example", {
-    taskQueue: "property",
-    // type inference works! args: [name: string]
-    args: [args],
-    // in practice, use a meaningful business ID, like customerId or transactionId
-    workflowId: "workflow-" + nanoid(),
-  });
+  const handle = await client.workflow.start<typeof mockActivity>(
+    "mockActivity",
+    {
+      taskQueue: "property",
+      // type inference works! args: [name: string]
+      args: [],
+      // in practice, use a meaningful business ID, like customerId or transactionId
+      workflowId: "workflow-" + nanoid(),
+    }
+  );
   console.log(`Started workflow ${handle.workflowId}`);
 
   // optional: wait for client result

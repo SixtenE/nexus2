@@ -2,10 +2,15 @@ import { proxyActivities } from "@temporalio/workflow";
 // Only import the activity types
 import type * as activities from "./activities";
 
-const { getHemnetData, getPropertyDetails, getTechnicalData, calculateValue } =
-  proxyActivities<typeof activities>({
-    startToCloseTimeout: "1 minute",
-  });
+const {
+  getHemnetData,
+  getPropertyDetails,
+  getTechnicalData,
+  calculateValue,
+  mock,
+} = proxyActivities<typeof activities>({
+  startToCloseTimeout: "1 minute",
+});
 
 /** A workflow that simply calls an activity */
 export async function example(address: string) {
@@ -22,4 +27,8 @@ export async function example(address: string) {
   });
 
   return { confidence, maxValue, minValue };
+}
+
+export async function mockActivity() {
+  return await mock();
 }
