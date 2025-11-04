@@ -168,3 +168,84 @@ export async function calculateValue(input: {
     confidence: confidence * 100,
   };
 }
+
+export async function mock() {
+  const mockPropertyData = {
+    address: "Strandvägen 45, Stockholm",
+    healthScore: 78,
+    valueInterval: {
+      min: 3200000,
+      max: 3600000,
+      confidence: 87,
+    },
+    riskLevel: "low" as const,
+    riskFactors: [
+      "Energiklass B - god energiprestanda",
+      "Senaste OVK godkänd för 6 månader sedan",
+      "Avgift 15% under områdets snitt",
+      "Stambyte genomfört 2019",
+    ],
+    priceHistory: [
+      { month: "Jan 23", price: 3100000, avgPrice: 2900000 },
+      { month: "Mar 23", price: 3150000, avgPrice: 2950000 },
+      { month: "Maj 23", price: 3200000, avgPrice: 3000000 },
+      { month: "Jul 23", price: 3250000, avgPrice: 3050000 },
+      { month: "Sep 23", price: 3300000, avgPrice: 3100000 },
+      { month: "Nov 23", price: 3350000, avgPrice: 3150000 },
+      { month: "Jan 24", price: 3400000, avgPrice: 3200000 },
+    ],
+    factors: [
+      {
+        name: "Byggnadstekniskt",
+        score: 85,
+        weight: 20,
+        description: "Energiklass B, OVK godkänd, låg radonnivå",
+        details:
+          "Fastigheten har genomgått omfattande energioptimering med nya fönster 2020 och tilläggsisolering av vind. OVK-besiktning visar inga anmärkningar.",
+      },
+      {
+        name: "Ekonomi",
+        score: 72,
+        weight: 30,
+        description:
+          "Måttlig avgift, stabil driftskostnad, värdering över taxering",
+        details:
+          "Månadsavgiften på 4,850 SEK/månad är 15% lägre än områdessnitt. Driftskostnaderna har varit stabila de senaste 5 åren. Senaste taxeringsvärde: 2.8M SEK.",
+      },
+      {
+        name: "Läge & Bekvämlighet",
+        score: 90,
+        weight: 15,
+        description: "Utmärkt läge med närhet till centrum och kollektivtrafik",
+        details:
+          "150m till tunnelbana, 5 min promenad till centrum. Garage ingår. Låg bullernivå (<50 dB). Grönområde 100m från fastigheten.",
+      },
+      {
+        name: "Underhåll & Renovering",
+        score: 80,
+        weight: 15,
+        description:
+          "Större renoveringar genomförda, planerat underhåll positivt",
+        details:
+          "Stambyte 2019, fasadrenovering 2018, nytt tak 2017. Balkong renoverad 2021. Ventilationssystem uppgraderat 2020. Inget akut underhåll planerat.",
+      },
+      {
+        name: "Miljö & Energi",
+        score: 88,
+        weight: 10,
+        description: "Låga CO₂-utsläpp, fjärrvärme, hög energieffektivitet",
+        details:
+          "CO₂-utsläpp: 8 kg/m²/år (betydligt under genomsnitt). Fjärrvärme med grön energi. Energiförbrukning: 85 kWh/m²/år.",
+      },
+      {
+        name: "Marknadsindikatorer",
+        score: 75,
+        weight: 10,
+        description: "Positiv prisutveckling i området, stabil marknad",
+        details:
+          "Området har visat 9.7% prisökning senaste 12 månaderna. Snittlig försäljningstid: 18 dagar. Få konkurrerande objekt på marknaden.",
+      },
+    ],
+  };
+  return mockPropertyData;
+}

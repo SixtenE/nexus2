@@ -5,15 +5,18 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
 import { run } from "@/app/temporal/client";
+import { useRouter } from "next/navigation";
 
 const PropertySearch = () => {
+  const router = useRouter();
   const [address, setAddress] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (address.trim()) {
-      const response = await run(address);
-      console.log(response);
+      //   const response = await run(address);
+      //   console.log(response);
+      router.push(`/${address}`);
     }
   };
 
