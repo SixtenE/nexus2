@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ArrowLeft, Download } from "lucide-react";
+import { ArrowLeft, Download, Check } from "lucide-react";
 
 /* ================= I18N ================= */
 const messages = {
@@ -13,7 +13,7 @@ const messages = {
       footer: "Measurable confidence for your home",
     },
     toolbar: { risk: "Risk →", quality: "Quality →", value: "Value" },
-    buttons: { exportPdf: "Export PDF", back: "Back" },
+    buttons: { exportPdf: "Export PDF", back: "Back", validate: "Validate" },
     titles: {
       health: "Health Index",
       valueInterval: "Value Interval",
@@ -29,8 +29,8 @@ const messages = {
       energy: "OVK & Energy",
     },
     fields: {
-      addressSearch: "Search address",
-      addressHint: "Enter a valid address",
+      addressSearch: "Street, City, Apt#",
+      addressHint: "e.g. Storgatan 1, Stockholm, 12",
       city: "City",
       apartment: "Apartment #",
       fee: "Monthly fee (SEK)",
@@ -57,7 +57,7 @@ const messages = {
       footer: "Mätbar trygghet för ditt boende",
     },
     toolbar: { risk: "Risk →", quality: "Kvalitet →", value: "Värde" },
-    buttons: { exportPdf: "Exportera PDF", back: "Tillbaka" },
+    buttons: { exportPdf: "Exportera PDF", back: "Tillbaka", validate: "Validera" },
     titles: {
       health: "Hälsoindex",
       valueInterval: "Värdeintervall",
@@ -73,8 +73,8 @@ const messages = {
       energy: "OVK & Energi",
     },
     fields: {
-      addressSearch: "Sök adress",
-      addressHint: "Ange en giltig adress",
+      addressSearch: "Gatuadress, Stad, Lgh#",
+      addressHint: "t.ex. Storgatan 1, Stockholm, 12",
       city: "Stad",
       apartment: "Lägenhetsnummer",
       fee: "Månadsavgift (SEK)",
@@ -390,42 +390,24 @@ function energyColor(cls?: string) {
   }
 }
 
-function EnergyScale({ current }: { current?: string }) {
-  const classes = ["A", "B", "C", "D", "E", "F", "G"] as const;
-  const cur = (current || "").toUpperCase();
-  return (
-    <div>
-      <div className="flex items-center justify-between text-[11px] text-gray-500 mb-1">
-        <span>Higher efficiency</span>
-        <span>Lower efficiency</span>
-      </div>
-      <div className="flex gap-2">
-        {classes.map((c) => (
-          <span
-            key={c}
-            className={`px-2 py-1 rounded-md border ${energyColor(c)} ${cur === c ? "ring-2 ring-offset-2 ring-blue-500" : ""}`}
-            title={`Energy class ${c}`}
-          >
-            {c}
-          </span>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 /* ================= Data ================= */
-function makeLast12MonthsSeries(startPrice = 4_800_000) {
+function makeLast12MonthsSeries(startPrice = 4_800_000, jitterSeed = 0) {
   const out: { month: string; price: number }[] = [];
   const now = new Date();
   for (let i = 11; i >= 0; i--) {
     const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-    const jitter = (Math.sin(i * 0.7) + Math.random() * 0.2 - 0.1) * 20_000;
+    const jitter = (Math.sin(i * 0.7 + jitterSeed) + ((jitterSeed % 10) / 10 - 0.5)) * 20_000;
     const price = Math.max(3_500_000, startPrice + (11 - i) * 15_000 + jitter);
     out.push({ month: label, price: Math.round(price) });
   }
   return out;
+}
+
+function simpleHash(s: string) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
+  return h;
 }
 
 const propertyData = {
@@ -454,16 +436,56 @@ const propertyData = {
 export default function Dashboard() {
   const [lang, setLang] = React.useState<LangKey>("en");
   const t = messages[lang];
+
+  // SINGLE input field (Street, City, Apt#)
+  const [combinedInput, setCombinedInput] = React.useState<string>(`${propertyData.address}, ${propertyData.city}, ${propertyData.apartment}`);
+
+  // Applied values (after clicking Validate / pressing Enter)
   const [street, setStreet] = React.useState<string>(propertyData.address);
   const [city, setCity] = React.useState<string>(propertyData.city);
   const [apt, setApt] = React.useState<string>(propertyData.apartment);
   const composedAddress = `${street}, ${city}${apt ? ` — Apt ${apt}` : ""}`;
 
-  const ovkApproved = true;
+  // Chart data that updates on validate
+  const [chartData, setChartData] = React.useState(propertyData.salesLast12M);
+
   const energy = { declared: "2022", cls: "C" } as const;
 
-  const [riskLevel, setRiskLevel] = React.useState(propertyData.riskLevel);
+  const [riskLevel, setRiskLevel] = React.useState(propertyData.riskLevel as "low" | "medium" | "high");
   const [confidence, setConfidence] = React.useState(propertyData.valueInterval.confidence);
+
+  const parseCombined = (s: string) => {
+    // Expect: "Street, City, Apt#" (apt optional)
+    const parts = s.split(",").map((p) => p.trim()).filter(Boolean);
+    const street = parts[0] || "";
+    const city = parts[1] || "";
+    // If third part missing, try to infer number at end
+    let apt = parts[2] || "";
+    if (!apt) {
+      const m = parts.join(" ").match(/(?:apt|lgh|#)\s*(\w+)/i) || parts[0]?.match(/(\d+[A-Za-z]?)$/);
+      apt = m ? m[1] : "";
+    }
+    return { street, city, apt };
+  };
+
+  const onValidate = React.useCallback(() => {
+    const { street, city, apt } = parseCombined(combinedInput);
+    if (!street || !city) {
+      alert(lang === "sv" ? "Ange gatuadress och stad (t.ex. Storgatan 1, Stockholm, 12)." : "Please enter street and city (e.g., Storgatan 1, Stockholm, 12).");
+      return;
+    }
+    setStreet(street);
+    setCity(city);
+    setApt(apt);
+    // Seed chart by address so it changes per search
+    const seed = simpleHash(`${street}|${city}|${apt}`);
+    const base = 4_500_000 + (seed % 300_000); // 4.5–4.8 M
+    setChartData(makeLast12MonthsSeries(base, seed % 1000));
+  }, [combinedInput, lang]);
+
+  const onInputKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") onValidate();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-white via-emerald-50/40 to-white">
@@ -479,28 +501,22 @@ export default function Dashboard() {
                 <p className="text-xs text-gray-500 mt-1">{composedAddress}</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="hidden md:flex gap-2">
+            <div className="flex items-center gap-3">
+              {/* SINGLE labeled search control */}
+              <div className="hidden md:flex flex-col gap-1">
+                <label htmlFor="combo" className="text-[11px] text-gray-600">{t.fields.addressSearch}</label>
                 <input
-                  value={street}
-                  onChange={(e) => setStreet(e.target.value)}
-                  placeholder={t.fields.addressSearch}
-                  title={t.fields.addressHint}
-                  className="w-56 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                />
-                <input
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder={t.fields.city}
-                  className="w-40 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                />
-                <input
-                  value={apt}
-                  onChange={(e) => setApt(e.target.value)}
-                  placeholder={t.fields.apartment}
-                  className="w-36 rounded-full border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                  id="combo"
+                  value={combinedInput}
+                  onChange={(e) => setCombinedInput(e.target.value)}
+                  onKeyDown={onInputKeyDown}
+                  placeholder={t.fields.addressHint}
+                  className="w-[28rem] rounded-full border border-gray-300 bg-white px-4 py-2 text-sm shadow-sm focus:outline-none focus:ring-2 focus:ring-emerald-400"
                 />
               </div>
+              <Button variant="outline" size="sm" onClick={onValidate} title={t.buttons.validate} aria-label={t.buttons.validate}>
+                <Check className="mr-2 h-4 w-4" /> {t.buttons.validate}
+              </Button>
               <LanguageSwitcher lang={lang} onChange={setLang} />
               <Button variant="outline" size="sm">
                 <Download className="mr-2 h-4 w-4" /> {t.buttons.exportPdf}
@@ -551,7 +567,7 @@ export default function Dashboard() {
         {/* Charts + Factors */}
         <div className="mb-8 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <PriceChart
-            data={propertyData.salesLast12M}
+            data={chartData}
             title={t.titles.priceChart}
             sub={t.titles.priceSub}
           />
@@ -570,20 +586,27 @@ export default function Dashboard() {
             <PanelHeader title={messages[lang].panels.energy} icon={<EnergyIcon />} />
             <div className="flex items-center gap-2 mb-2">
               <span className={`px-2 py-0.5 text-xs rounded-full border ${energyColor(energy.cls)}`}>{messages[lang].fields.energyClass} {energy.cls}</span>
-              <span className={`px-2 py-0.5 text-xs rounded-full border ${ovkApproved ? "bg-green-100 text-green-700 border-green-200" : "bg-rose-100 text-rose-700 border-rose-200"}`}>
-                OVK {ovkApproved ? messages[lang].fields.approved : messages[lang].fields.notApproved}
+              <span className={`px-2 py-0.5 text-xs rounded-full border ${true ? "bg-green-100 text-green-700 border-green-200" : "bg-rose-100 text-rose-700 border-rose-200"}`}>
+                OVK {true ? messages[lang].fields.approved : messages[lang].fields.notApproved}
               </span>
               <span className="px-2 py-0.5 text-xs rounded-full border bg-blue-100 text-blue-700 border-blue-200">
-                {messages[lang].fields.declared} {energy.declared}
+                {messages[lang].fields.declared} 2022
               </span>
             </div>
-            <InfoRow left={messages[lang].fields.declaration} right={energy.declared} />
-            <InfoRow left={messages[lang].fields.energyClass} right={energy.cls} />
-            <div className="mt-3"><EnergyScale current={energy.cls} /></div>
+            <InfoRow left={messages[lang].fields.declaration} right={"2022"} />
+            <InfoRow left={messages[lang].fields.energyClass} right={"C"} />
+            <div className="mt-3">
+              {/* Simple energy scale inline to save space */}
+              <div className="flex gap-2 text-[11px]">
+                {["A","B","C","D","E","F","G"].map((c) => (
+                  <span key={c} className={cn("px-2 py-1 rounded-md border", energyColor(c), c === "C" && "ring-2 ring-offset-2 ring-blue-500")}>{c}</span>
+                ))}
+              </div>
+            </div>
           </div>
         </section>
 
-        {/* AI Summary moved to END */}
+        {/* AI Summary at END */}
         <div className="mt-8 rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
           <h2 className="mb-3 text-2xl font-bold">{t.titles.aiSummary}</h2>
           <p className="text-lg leading-relaxed text-gray-800/90">
@@ -602,7 +625,7 @@ export default function Dashboard() {
   );
 }
 
-/* ================= Animated Pulse Logo (GIF-like SVG) ================= */
+/* ================= Animated Pulse Logo (square-ish house, red→green pulse) ================= */
 function PulseGif() {
   return (
     <svg viewBox="0 0 96 48" className="h-12 w-24" aria-hidden="true">
@@ -613,14 +636,15 @@ function PulseGif() {
           <stop offset="100%" stopColor="#059669" />
         </linearGradient>
       </defs>
-      {/* House */}
+      {/* More square house body with a flatter roof */}
       <g stroke="#0f172a" strokeWidth="2" fill="url(#pulseGrad)">
-        <polygon points="16,22 48,4 80,22 80,42 16,42" />
-        <rect x="42" y="28" width="12" height="14" fill="#fff" opacity="0.95" />
+        <rect x="20" y="18" width="56" height="24" rx="3" ry="3" />
+        <polygon points="20,18 48,8 76,18" />
+        <rect x="44" y="26" width="12" height="16" fill="#fff" opacity="0.95" />
       </g>
       {/* Pulse line */}
       <path
-        d="M4 34 L18 34 L26 22 L34 40 L44 28 L54 34 L62 26 L70 38 L84 34 L92 34"
+        d="M4 38 L18 38 L26 22 L34 40 L44 28 L54 36 L62 26 L70 38 L84 38 L92 38"
         fill="none"
         stroke="#0f172a"
         strokeWidth="3"
@@ -681,7 +705,7 @@ function DevTests() {
       pass++;
     } catch (e: any) { fail++; logs.push("scoreColor test failed: " + e?.message); }
 
-    // 6) salesLast12M sanity
+    // 6) salesLast12M sanity (initial constant)
     try {
       const ps = propertyData.salesLast12M.map((p) => p.price);
       console.assert(ps.length === 12 && ps.every((v) => Number.isFinite(v)), "salesLast12M should contain 12 finite numbers");
