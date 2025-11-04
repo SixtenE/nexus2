@@ -2,27 +2,25 @@ import { proxyActivities } from "@temporalio/workflow";
 // Only import the activity types
 import type * as activities from "./activities";
 
-const { calculateValue, getHemnetData } = proxyActivities<typeof activities>({
+const { reverse } = proxyActivities<typeof activities>({
   startToCloseTimeout: "1 minute",
 });
 
 /** A workflow that simply calls an activity */
-export async function propertevaluate(address: string): Promise<{
-  confidence: number;
-  maxValue: number;
-  technicalData: number;
-}> {
-  const marketData = await getHemnetData(address);
+export async function planka(address: string) {
+  //   const marketData = await getHemnetData(address);
 
-  const propertyDetails = await getPropertyDetails();
+  //   const propertyDetails = await getPropertyDetails();
 
-  const technicalData = await getTechnicalData();
+  //   const technicalData = await getTechnicalData();
 
-  const { confidence, maxValue, minValue } = await calculateValue({
-    marketData,
-    propertyDetails,
-    technicalData,
-  });
+  //   const { confidence, maxValue, minValue } = await calculateValue({
+  //     marketData,
+  //     propertyDetails,
+  //     technicalData,
+  //   });
 
-  return { confidence, maxValue, minValue };
+  const rev = reverse(address);
+
+  return rev;
 }

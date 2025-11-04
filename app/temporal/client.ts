@@ -1,7 +1,7 @@
 "use server";
 
 import { Connection, Client } from "@temporalio/client";
-import type { propertevaluate } from "./workflows";
+import type { planka } from "./workflows";
 import { nanoid } from "nanoid";
 
 export async function run(args: string) {
@@ -23,16 +23,13 @@ export async function run(args: string) {
     // namespace: 'foo.bar', // connects to 'default' namespace if not specified
   });
 
-  const handle = await client.workflow.start<typeof propertevaluate>(
-    "propertyvaluate",
-    {
-      taskQueue: "hello-world",
-      // type inference works! args: [name: string]
-      args: [args],
-      // in practice, use a meaningful business ID, like customerId or transactionId
-      workflowId: "workflow-" + nanoid(),
-    }
-  );
+  const handle = await client.workflow.start<typeof planka>("planka", {
+    taskQueue: "property",
+    // type inference works! args: [name: string]
+    args: [args],
+    // in practice, use a meaningful business ID, like customerId or transactionId
+    workflowId: "workflow-" + nanoid(),
+  });
   console.log(`Started workflow ${handle.workflowId}`);
 
   // optional: wait for client result

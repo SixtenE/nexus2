@@ -143,3 +143,7 @@ export async function calculateValue(input: {
     confidence: confidence * 100,
   };
 }
+
+export async function reverse(address: string) {
+  return address.split("").reverse().join("");
+}
