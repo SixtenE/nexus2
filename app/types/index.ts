@@ -1,38 +1,77 @@
-// src/types/property.ts
-
-export interface Price {
-  amount: number;
-  currency: string;
+export interface EnergyDeclarationResponse {
+  energideklarationer: EnergyDeclaration[];
 }
 
-export interface Coordinates {
-  lat: number;
-  lon: number;
+export interface EnergyDeclaration {
+  id: number;
+  energiklass: string;
+  primarenergital?: string;
+  energiprestanda?: string;
+  radonmatning?: string;
+  ventilationskontroll?: string;
+  byggnadsar: number;
+  utförd?: string;
+  fastigheter: Fastighet[];
 }
 
-export interface MonthlyFee {
-  amount: number;
-  currency: string;
+export interface Fastighet {
+  kommun: string;
+  fastighetsbeteckning: string;
+  adresser: FastighetsAdress[];
 }
 
-export interface Property {
+export interface FastighetsAdress {
+  adress: string;
+  postnummer: string;
+  postort: string;
+}
+
+// 2️⃣ Parsed OCR / Document
+export interface ParsedDocumentResponse {
+  ok: boolean;
+  used_ocr: boolean;
+  sha256: string;
+  raw_text_preview?: string;
+  parsed?: ParsedFields;
+}
+
+export interface ParsedFields {
+  A_Blankett?: {
+    fastighetsbeteckning?: string;
+    gata?: string;
+    postnr?: string;
+    ort?: string;
+  };
+  // other sections could be added here
+}
+
+// 3️⃣ Real Estate Sale Record
+export interface PropertySaleResponse {
   id: string;
-  broker: string;
-  coordinates: Coordinates;
-  housingForm: number;
-  isPreOwned: boolean;
-  price: Price;
-  isPublic: boolean;
-  soldAt: string; // ISO date string
-  tenure: string; // e.g., "TENANT_OWNERSHIP"
-  apartmentNumber: string;
-  floor: number;
-  livingArea: number; // m²
-  monthlyFee: MonthlyFee;
-  numberOfRooms: number;
-  postCode: string;
-  postalArea: string;
-  streetAddress: string;
-  constructionSpan: string; // e.g., "2011-1975"
-  cooperativeRegistrationNumber: string;
+  broker?: string;
+  coordinates: {
+    lat: number;
+    lon: number;
+  };
+  housingForm?: number;
+  isPreOwned?: boolean;
+  price?: {
+    amount: number;
+    currency: string;
+  };
+  soldAt?: string;
+  tenure?: string;
+  apartmentNumber?: string;
+  floor?: number;
+  livingArea?: number;
+  monthlyFee?: {
+    amount: number;
+    currency: string;
+  };
+  numberOfRooms?: number;
+  postCode?: string;
+  postalArea?: string;
+  streetAddress?: string;
+  constructionSpan?: string;
+  cooperativeRegistrationNumber?: string;
 }

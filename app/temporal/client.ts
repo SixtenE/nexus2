@@ -1,15 +1,13 @@
 "use server";
 
 import { Connection, Client } from "@temporalio/client";
-import type { planka } from "./workflows";
+import type { example } from "./workflows";
 import { nanoid } from "nanoid";
 
 export async function run(args: string) {
   // Connect to the default Server location
   const connection = await Connection.connect({
-    address: process.env.TEMPORAL_ADDRESS,
-    apiKey: process.env.TEMPORAL_API_KEY,
-    tls: true,
+    address: "localhost:7233",
   });
   // In production, pass options to configure TLS and other settings:
   // {
@@ -23,7 +21,7 @@ export async function run(args: string) {
     // namespace: 'foo.bar', // connects to 'default' namespace if not specified
   });
 
-  const handle = await client.workflow.start<typeof planka>("planka", {
+  const handle = await client.workflow.start<typeof example>("example", {
     taskQueue: "property",
     // type inference works! args: [name: string]
     args: [args],

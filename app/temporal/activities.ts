@@ -1,7 +1,6 @@
 "use server";
 
 import OpenAI from "openai";
-import { Property } from "../types";
 
 const client = new OpenAI({
   apiKey: process.env["OPENAI_API_KEY"],
@@ -22,6 +21,45 @@ export async function greet(name: string): Promise<string> {
 function normalizeStreet(s: string) {
   return s.normalize("NFKC").trim().toLowerCase().replace(/\s+/g, " ");
 }
+const HEMNET_URL =
+  "https://raw.githubusercontent.com/SixtenE/nexus/refs/heads/main/data/mock_sales_100.json";
+const BOLAGSVERKET_URL =
+  "https://raw.githubusercontent.com/SixtenE/nexus/refs/heads/main/data/boverket_stockholm_100.json";
+const TECHNICAL_URL =
+  "https://raw.githubusercontent.com/SixtenE/nexus/refs/heads/main/data/mock_hvac_100.json";
+
+export async function getHemnetData(address: string) {
+  const res = await fetch(HEMNET_URL);
+  const data = await res.json();
+  const target = normalizeStreet(address);
+  return data.filter(
+    (p: any) =>
+      typeof p.streetAddress === "string" &&
+      normalizeStreet(p.streetAddress) === target
+  );
+}
+
+export async function getPropertyDetails(address: string) {
+  const res = await fetch(BOLAGSVERKET_URL);
+  const data = await res.json();
+  const target = normalizeStreet(address);
+
+  return data.filter(
+    (p: any) =>
+      typeof p.address === "string" && normalizeStreet(p.address) === target
+  );
+}
+
+export async function getTechnicalData(address: string) {
+  const res = await fetch(TECHNICAL_URL);
+  const data = await res.json();
+  const target = normalizeStreet(address);
+
+  return data.filter(
+    (p: any) =>
+      typeof p.address === "string" && normalizeStreet(p.address) === target
+  );
+}
 
 export type PropertyDetails = {
   energiklass: string;
@@ -30,7 +68,6 @@ export type PropertyDetails = {
   radonmatning?: string;
   ventilationskontroll?: string;
   byggnadsar: number;
-  livingArea: number;
 };
 
 export type MarketData = {
@@ -42,6 +79,7 @@ export type MarketData = {
     livingArea: number;
     numberOfRooms: number;
   }[];
+  livingArea: number;
 };
 
 export type TechnicalData = {
@@ -58,27 +96,6 @@ export type ValueInterval = {
   confidence: number; // percentage
 };
 
-const HEMNET_URL =
-  "https://raw.githubusercontent.com/SixtenE/nexus/refs/heads/main/data/mock_sales_100.json";
-
-export async function getHemnetData(address: string) {
-  const response = await fetch(HEMNET_URL);
-
-  const data = await response.json();
-
-  const target = normalizeStreet(address);
-
-  const filtered = data.filter(
-    (p: Property) =>
-      typeof p.streetAddress === "string" &&
-      normalizeStreet(p.streetAddress) === target
-  );
-
-  return filtered;
-}
-
-export async function getPropertyDetails(address: string) {}
-
 export async function calculateValue(input: {
   propertyDetails: PropertyDetails;
   marketData: MarketData;
@@ -86,14 +103,20 @@ export async function calculateValue(input: {
 }): Promise<ValueInterval> {
   const { propertyDetails, marketData, technicalData } = input;
 
+  if (!propertyDetails || !marketData || !technicalData) {
+    throw new Error(
+      "Missing required input data: propertyDetails, marketData, or technicalData is undefined"
+    );
+  }
+
   const currentYear = new Date().getFullYear();
-  const propertyArea = propertyDetails.livingArea;
+  const propertyArea = marketData.livingArea;
 
   // 1️⃣ Base price from this property's sale
   let basePrice = marketData.propertyPrice;
 
   // 2️⃣ Street average price per m²
-  const streetPricesPerM2 = marketData.streetSales.map(
+  const streetPricesPerM2 = (marketData.streetSales || []).map(
     (s) => s.amount / s.livingArea
   );
   const avgStreetPricePerM2 =
@@ -142,8 +165,4 @@ export async function calculateValue(input: {
     maxValue,
     confidence: confidence * 100,
   };
-}
-
-export async function reverse(address: string) {
-  return address.split("").reverse().join("");
 }
