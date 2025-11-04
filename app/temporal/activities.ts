@@ -46,7 +46,8 @@ export async function getPropertyDetails(address: string) {
 
   return data.filter(
     (p: any) =>
-      typeof p.address === "string" && normalizeStreet(p.address) === target
+      typeof p.fastigheter.adresser.adress === "string" &&
+      normalizeStreet(p.fastigheter.adresser.adress) === target
   );
 }
 
@@ -57,7 +58,8 @@ export async function getTechnicalData(address: string) {
 
   return data.filter(
     (p: any) =>
-      typeof p.address === "string" && normalizeStreet(p.address) === target
+      typeof p.parsed.A_Blankett.gata === "string" &&
+      normalizeStreet(p.address) === target
   );
 }
 
